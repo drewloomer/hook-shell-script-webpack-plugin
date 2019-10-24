@@ -1,0 +1,40 @@
+{
+  "name": "hook-shell-script-webpack-plugin",
+  "version": "0.1.0",
+  "description": "A Webpack plugin for running a shell script(s) on any hook provided by Webpack.",
+  "main": "index.js",
+  "scripts": {
+    "start": "ava --watch",
+    "test": "nyc ava && eslint ."
+  },
+  "keywords": [
+    "webpack",
+    "bash",
+    "shell",
+    "hook"
+  ],
+  "author": "Drew Loomer",
+  "license": "MIT",
+  "devDependencies": {
+    "ava": "^2.4.0",
+    "eslint": "^6.5.1",
+    "husky": "^3.0.9",
+    "nyc": "^14.1.1",
+    "prettier": "^1.18.2",
+    "pretty-quick": "^2.0.0",
+    "sinon": "^7.5.0",
+    "webpack": "^4.41.2"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "pretty-quick --staged"
+    }
+  },
+  "ava": {
+    "files": [
+      "test/index.js",
+      "e2e/index.js"
+    ],
+    "verbose": true
+  }
+}
