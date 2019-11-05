@@ -7,8 +7,8 @@ class HookShellScriptPlugin {
    * @param {{[hookName: string]: Array<string | {command: string, args: string[]}>}} hooks
    */
   constructor(hooks) {
-    this.procs = {};
-    this.hooks = hooks || {};
+    this._procs = {};
+    this._hooks = hooks || {};
   }
 
   /**
@@ -16,12 +16,12 @@ class HookShellScriptPlugin {
    */
   apply(compiler) {
     this.watch = compiler.options.watch;
-    Object.keys(this.hooks).forEach(hookName => {
+    Object.keys(this._hooks).forEach(hookName => {
       if (!compiler.hooks[hookName]) {
-        this.handleError(`The hook ${hookName} does not exist on the Webpack compiler.`);
+        this._handleError(`The hook ${hookName} does not exist on the Webpack compiler.`);
       }
       compiler.hooks[hookName].tap(NAME, () => {
-        this.hooks[hookName].forEach(s => this.handleScript(s));
+        this._hooks[hookName].forEach(s => this._handleScript(s));
       });
     });
   }
@@ -30,7 +30,7 @@ class HookShellScriptPlugin {
    * Parse a given script into a command and arguments
    * @param {string | {command: string, args: string[]}} script
    */
-  parseScript(script) {
+  _parseScript(script) {
     if (typeof script === 'string') {
       const [command, ...args] = script.split(' ');
       return { command, args };
@@ -43,30 +43,30 @@ class HookShellScriptPlugin {
    * Run a script, cancelling an already running iteration of that script.
    * @param {string | {command: string, args: string[]}} script
    */
-  handleScript(script) {
+  _handleScript(script) {
     const key = typeof script === 'string' ? script : JSON.stringify(script);
-    if (this.procs[key]) this.killProc(key);
-    this.log(`Running script: ${key}\n`);
-    const { command, args } = this.parseScript(script);
-    this.procs[key] = spawn(command, args, { stdio: 'pipe' });
-    this.procs[key].on('error', this.onScriptError.bind(this, key));
-    this.procs[key].stderr.on('data', this.onScriptError.bind(this, key));
-    this.procs[key].on('exit', this.onScriptComplete.bind(this, key));
+    if (this._procs[key]) this._killProc(key);
+    this._log(`Running script: ${key}\n`);
+    const { command, args } = this._parseScript(script);
+    this._procs[key] = spawn(command, args, { stdio: 'pipe' });
+    this._procs[key].on('error', this._onScriptError.bind(this, key));
+    this._procs[key].stderr.on('data', this._onScriptError.bind(this, key));
+    this._procs[key].on('exit', this._onScriptComplete.bind(this, key));
   }
 
   /**
    * Kill a running process.
    * @param {string} key
    */
-  killProc(key) {
-    this.procs[key].kill();
+  _killProc(key) {
+    this._procs[key].kill();
   }
 
   /**
    * Handle an error by killing the build if not in watch mode.
    * @param {string} msg
    */
-  handleError(msg) {
+  _handleError(msg) {
     msg = `\n[${NAME}] ${msg}\n`;
     if (!this.watch) {
       throw new Error(msg);
@@ -78,8 +78,8 @@ class HookShellScriptPlugin {
    * Log a message to the console.
    * @param {string} msg
    */
-  log(msg) {
-    const msg = `\n[${NAME}] ${msg}\n`;
+  _log(msg) {
+    msg = `\n[${NAME}] ${msg}\n`;
     console.log(msg);
   }
 
@@ -89,12 +89,12 @@ class HookShellScriptPlugin {
    * @param {number} error
    * @param {string} msg
    */
-  onScriptComplete(key, error, msg) {
-    this.procs[key] = null;
+  _onScriptComplete(key, error, msg) {
+    this._procs[key] = null;
     if (msg === 'SIGTERM' || msg === 'SIGINT') {
-      this.log(`Killing script: ${key}\n`);
+      this._log(`Killing script: ${key}\n`);
     } else if (!error) {
-      this.log(`Completed script: ${key}\n`);
+      this._log(`Completed script: ${key}\n`);
     }
   }
 
@@ -103,8 +103,8 @@ class HookShellScriptPlugin {
    * @param {string} script
    * @param {string} error
    */
-  onScriptError(script, error) {
-    this.handleError(`Error while running \`${script}\`: ${error}`);
+  _onScriptError(script, error) {
+    this._handleError(`Error while running \`${script}\`: ${error}`);
   }
 }
 

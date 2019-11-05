@@ -1,13 +1,27 @@
 import test from 'ava';
-import HookShellScriptPlugin from '../';
-import { fake, spy } from 'sinon';
+import { fake, spy, stub } from 'sinon';
+import proxyquire from 'proxyquire';
 
+// Stub child_process so we can mock its calls
+const spawnStub = stub();
+const HookShellScriptPlugin = proxyquire('../', {
+  child_process: {
+    spawn: spawnStub
+  }
+});
+
+// Test data
 const testHooks = { beforeRun: ['cat README.md'], afterCompile: ['ls', { command: 'git', args: ['status'] }] };
-const mockHook = () => ({
-  tap: fake((_, cb) => {
-    console.log(_, cb);
-    return { call: cb };
-  })
+
+// Mocks
+const mockHook = (delay = 0) => ({
+  taps: [],
+  tap: fake(function(name, cb) {
+    this.taps.push({ name, cb });
+  }),
+  runAll: function() {
+    this.taps.map(t => setTimeout(() => t.cb(t.name), delay));
+  }
 });
 const mockCompiler = () => ({
   options: { watch: false },
@@ -16,12 +30,30 @@ const mockCompiler = () => ({
     afterCompile: mockHook()
   }
 });
+const spawns = {};
+const mockSpawn = cmd => ({
+  on: fake((msg, cb) => {
+    spawns[cmd] = spawns[cmd] || {};
+    spawns[cmd][msg] = cb;
+  }),
+  stderr: { on: fake() },
+  kill: killFake
+});
 
-test('it adds the hooks', ({ is, deepEqual }) => {
-  const plugin = new HookShellScriptPlugin();
-  const plugin2 = new HookShellScriptPlugin(testHooks);
-  deepEqual(plugin.hooks, {});
-  is(plugin2.hooks, testHooks);
+const completeSpawn = (cmd, msg, ...args) => {
+  spawns[cmd][msg].apply(this, args);
+};
+
+// Runs before each test to setup fake spawn, kill, console.log and console.error logic
+let killFake;
+const logSpy = spy(console, 'log');
+const errorSpy = spy(console, 'error');
+test.beforeEach(() => {
+  killFake = fake();
+  spawnStub.resetHistory();
+  spawnStub.callsFake(mockSpawn);
+  logSpy.resetHistory();
+  errorSpy.resetHistory();
 });
 
 test.cb('it blows up when a hook does not exist', ({ end, is, truthy }) => {
@@ -37,16 +69,15 @@ test.cb('it blows up when a hook does not exist', ({ end, is, truthy }) => {
 
 test.cb('it logs errors when in watch mode', ({ end, truthy }) => {
   const plugin = new HookShellScriptPlugin(testHooks);
-  const s = spy(console, 'error');
   try {
     plugin.apply({ options: { watch: true }, hooks: {} });
   } catch (e) {
-    truthy(s.calledWith('\n[HookShellScriptPlugin] The hook beforeRun does not exist on the Webpack compiler.\n'));
+    truthy(errorSpy.calledWith('\n[HookShellScriptPlugin] The hook beforeRun does not exist on the Webpack compiler.\n'));
     end();
   }
 });
 
-test('it applies the hooks', ({ is }) => {
+test('it applies the hooks to the compiler', ({ is }) => {
   const plugin = new HookShellScriptPlugin(testHooks);
   const compiler = mockCompiler();
   plugin.apply(compiler);
@@ -54,7 +85,77 @@ test('it applies the hooks', ({ is }) => {
   is(1, compiler.hooks.afterCompile.tap.callCount);
 });
 
-// mock spawn and capture calls
+test.serial.cb('it runs a script', ({ truthy, end }) => {
+  const plugin = new HookShellScriptPlugin(testHooks);
+  const compiler = mockCompiler();
+  plugin.apply(compiler);
+  compiler.hooks.beforeRun.runAll();
+  compiler.hooks.afterCompile.runAll();
+  setTimeout(() => {
+    truthy(spawnStub.called);
+    truthy(spawnStub.calledWith('cat', ['README.md']));
+    truthy(spawnStub.calledWith('ls', []));
+    truthy(spawnStub.calledWith('git', ['status']));
+    logSpy.calledWith('\n[HookShellScriptPlugin] Running script: cat README.md\n\n');
+  }, 0);
 
-test.todo('it kills already running scripts');
-test.todo('it handles errors when running a script');
+  setTimeout(() => {
+    completeSpawn('cat', 'exit');
+    logSpy.calledWith('\n[HookShellScriptPlugin] Completed script: cat README.md\n\n');
+    end();
+  }, 10);
+});
+
+test.serial.cb('it kills already running scripts with a SIGTERM', ({ truthy, end }) => {
+  const plugin = new HookShellScriptPlugin(testHooks);
+  const compiler = mockCompiler();
+  compiler.hooks.beforeRun = mockHook(10);
+  plugin.apply(compiler);
+  compiler.hooks.beforeRun.runAll();
+  setTimeout(() => {
+    compiler.hooks.beforeRun.runAll();
+  }, 1);
+  setTimeout(() => {
+    completeSpawn('cat', 'exit', 1, 'SIGTERM');
+    truthy(spawnStub.called);
+    truthy(killFake.called);
+    logSpy.calledWith('\n[HookShellScriptPlugin] Killing script: cat README.md\n\n');
+    end();
+  }, 15);
+});
+
+test.serial.cb('it kills already running scripts with a SIGINT', ({ truthy, end }) => {
+  const plugin = new HookShellScriptPlugin(testHooks);
+  const compiler = mockCompiler();
+  compiler.hooks.beforeRun = mockHook(10);
+  plugin.apply(compiler);
+  compiler.hooks.beforeRun.runAll();
+  setTimeout(() => {
+    compiler.hooks.beforeRun.runAll();
+  }, 1);
+  setTimeout(() => {
+    completeSpawn('cat', 'exit', 1, 'SIGINT');
+    truthy(spawnStub.called);
+    truthy(killFake.called);
+    logSpy.calledWith('\n[HookShellScriptPlugin] Killing script: cat README.md\n\n');
+    end();
+  }, 15);
+});
+
+test.serial.cb.only('it handles errors when running a script', ({ truthy, end }) => {
+  const plugin = new HookShellScriptPlugin(testHooks);
+  const compiler = mockCompiler();
+  compiler.watch = true;
+  compiler.hooks.beforeRun = mockHook(10);
+  plugin.apply(compiler);
+  compiler.hooks.beforeRun.runAll();
+  setTimeout(() => {
+    compiler.hooks.beforeRun.runAll();
+  }, 1);
+  setTimeout(() => {
+    completeSpawn('cat', 'error', 'Uh oh.');
+    truthy(spawnStub.called);
+    logSpy.calledWith('\n[HookShellScriptPlugin] Error while running `cat README.md`: Uh oh.\n\n');
+    end();
+  }, 15);
+});
