@@ -18,6 +18,7 @@
   "devDependencies": {
     "ava": "^2.4.0",
     "eslint": "^6.5.1",
+    "fs-extra": "^8.1.0",
     "husky": "^3.0.9",
     "nyc": "^14.1.1",
     "prettier": "^1.18.2",
@@ -37,5 +38,8 @@
       "e2e/index.js"
     ],
     "verbose": true
+  },
+  "nyc": {
+    "reporter": "lcov"
   }
 }

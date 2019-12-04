@@ -6,9 +6,9 @@ class HookShellScriptPlugin {
    * Add hooks and scripts to run on each hook.
    * @param {{[hookName: string]: Array<string | {command: string, args: string[]}>}} hooks
    */
-  constructor(hooks) {
+  constructor(hooks = {}) {
     this._procs = {};
-    this._hooks = hooks || {};
+    this._hooks = hooks;
   }
 
   /**

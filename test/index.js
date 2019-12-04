@@ -56,6 +56,11 @@ test.beforeEach(() => {
   errorSpy.resetHistory();
 });
 
+test('it creates a new instance', ({ truthy }) => {
+  const plugin = new HookShellScriptPlugin();
+  truthy(plugin);
+});
+
 test.cb('it blows up when a hook does not exist', ({ end, is, truthy }) => {
   const plugin = new HookShellScriptPlugin(testHooks);
   try {
@@ -142,11 +147,11 @@ test.serial.cb('it kills already running scripts with a SIGINT', ({ truthy, end 
   }, 15);
 });
 
-test.serial.cb.only('it handles errors when running a script', ({ truthy, end }) => {
+test.serial.cb('it handles errors when running a script', ({ truthy, end }) => {
   const plugin = new HookShellScriptPlugin(testHooks);
   const compiler = mockCompiler();
-  compiler.watch = true;
   compiler.hooks.beforeRun = mockHook(10);
+  compiler.options.watch = true;
   plugin.apply(compiler);
   compiler.hooks.beforeRun.runAll();
   setTimeout(() => {
@@ -156,6 +161,21 @@ test.serial.cb.only('it handles errors when running a script', ({ truthy, end })
     completeSpawn('cat', 'error', 'Uh oh.');
     truthy(spawnStub.called);
     logSpy.calledWith('\n[HookShellScriptPlugin] Error while running `cat README.md`: Uh oh.\n\n');
+    end();
+  }, 15);
+});
+
+test.serial.cb('it ignores complete error events that are not term or interupt', ({ end }) => {
+  const plugin = new HookShellScriptPlugin(testHooks);
+  const compiler = mockCompiler();
+  compiler.hooks.beforeRun = mockHook(10);
+  plugin.apply(compiler);
+  compiler.hooks.beforeRun.runAll();
+  setTimeout(() => {
+    compiler.hooks.beforeRun.runAll();
+  }, 1);
+  setTimeout(() => {
+    completeSpawn('cat', 'exit', 1, 'JUNK');
     end();
   }, 15);
 });
