@@ -7,8 +7,8 @@ This is a [webpack](https://webpack.github.io) plugin for running arbitrary shel
 Install the plugin with npm:
 
 ```sh
-$ npm install hook-shell-script-webpack-plugin --save-dev
-$ yarn --dev hook-shell-script-webpack-plugin
+$ npm install --save-dev hook-shell-script-webpack-plugin
+$ yarn add --dev hook-shell-script-webpack-plugin
 ```
 
 ## Usage
@@ -37,4 +37,4 @@ Big thanks to [webpack-hook-plugin](https://github.com/tienne/webpack-hook-plugi
 
 The MIT License
 
-Copyright :copyright: 2019 Drew Loomer, https://drewloomer.com
+Copyright :copyright: 2020 Drew Loomer, https://drewloomer.com
