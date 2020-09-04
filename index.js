@@ -48,7 +48,7 @@ class HookShellScriptPlugin {
     if (this._procs[key]) this._killProc(key);
     this._log(`Running script: ${key}\n`);
     const { command, args } = this._parseScript(script);
-    this._procs[key] = spawn(command, args, { stdio: 'pipe' });
+    this._procs[key] = spawn(command, args, { stdio: 'pipe', shell: true });
     this._procs[key].on('error', this._onScriptError.bind(this, key));
     this._procs[key].stderr.on('data', this._onScriptError.bind(this, key));
     this._procs[key].on('exit', this._onScriptComplete.bind(this, key));
