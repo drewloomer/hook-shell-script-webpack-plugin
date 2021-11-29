@@ -16,6 +16,7 @@ class HookShellScriptPlugin {
    */
   apply(compiler) {
     this.watch = compiler.options.watch;
+    this.logger = compiler.getInfrastructureLogger(NAME);
     Object.keys(this._hooks).forEach(hookName => {
       if (!compiler.hooks[hookName]) {
         this._handleError(`The hook ${hookName} does not exist on the Webpack compiler.`);
@@ -67,11 +68,10 @@ class HookShellScriptPlugin {
    * @param {string} msg
    */
   _handleError(msg) {
-    msg = `\n[${NAME}] ${msg}\n`;
     if (!this.watch) {
-      throw new Error(msg);
+      throw new Error(`[${NAME}] ${msg}`);
     }
-    console.error(msg);
+    this.logger.error(msg);
   }
 
   /**
@@ -79,8 +79,7 @@ class HookShellScriptPlugin {
    * @param {string} msg
    */
   _log(msg) {
-    msg = `\n[${NAME}] ${msg}\n`;
-    console.log(msg);
+    this.logger.info(msg);
   }
 
   /**
