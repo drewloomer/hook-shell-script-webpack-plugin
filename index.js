@@ -47,7 +47,7 @@ class HookShellScriptPlugin {
   _handleScript(script) {
     const key = typeof script === 'string' ? script : JSON.stringify(script);
     if (this._procs[key]) this._killProc(key);
-    this._log(`Running script: ${key}\n`);
+    this._log(`Running script: ${key}`);
     const { command, args } = this._parseScript(script);
     this._procs[key] = spawn(command, args, { stdio: 'pipe', shell: true });
     this._procs[key].on('error', this._onScriptError.bind(this, key));
@@ -91,9 +91,9 @@ class HookShellScriptPlugin {
   _onScriptComplete(key, error, msg) {
     this._procs[key] = null;
     if (msg === 'SIGTERM' || msg === 'SIGINT') {
-      this._log(`Killing script: ${key}\n`);
+      this._log(`Killing script: ${key}`);
     } else if (!error) {
-      this._log(`Completed script: ${key}\n`);
+      this._log(`Completed script: ${key}`);
     }
   }
 

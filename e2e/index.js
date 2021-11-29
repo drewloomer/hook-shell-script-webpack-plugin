@@ -26,7 +26,10 @@ function createConfig(pluginConfig) {
       path: outputPath,
       filename: `tmp.js`
     },
-    plugins: [new HookShellScriptPlugin(pluginConfig)]
+    plugins: [new HookShellScriptPlugin(pluginConfig)],
+    infrastructureLogging: {
+      level: "none"
+    }
   };
 }
 
