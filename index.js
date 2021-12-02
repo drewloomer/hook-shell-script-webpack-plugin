@@ -16,6 +16,7 @@ class HookShellScriptPlugin {
    */
   apply(compiler) {
     this.watch = compiler.options.watch;
+    this.logger = compiler.getInfrastructureLogger(NAME);
     Object.keys(this._hooks).forEach(hookName => {
       if (!compiler.hooks[hookName]) {
         this._handleError(`The hook ${hookName} does not exist on the Webpack compiler.`);
@@ -46,7 +47,7 @@ class HookShellScriptPlugin {
   _handleScript(script) {
     const key = typeof script === 'string' ? script : JSON.stringify(script);
     if (this._procs[key]) this._killProc(key);
-    this._log(`Running script: ${key}\n`);
+    this._log(`Running script: ${key}`);
     const { command, args } = this._parseScript(script);
     this._procs[key] = spawn(command, args, { stdio: 'pipe', shell: true });
     this._procs[key].on('error', this._onScriptError.bind(this, key));
@@ -67,11 +68,10 @@ class HookShellScriptPlugin {
    * @param {string} msg
    */
   _handleError(msg) {
-    msg = `\n[${NAME}] ${msg}\n`;
     if (!this.watch) {
-      throw new Error(msg);
+      throw new Error(`[${NAME}] ${msg}`);
     }
-    console.error(msg);
+    this.logger.error(msg);
   }
 
   /**
@@ -79,8 +79,7 @@ class HookShellScriptPlugin {
    * @param {string} msg
    */
   _log(msg) {
-    msg = `\n[${NAME}] ${msg}\n`;
-    console.log(msg);
+    this.logger.info(msg);
   }
 
   /**
@@ -92,9 +91,9 @@ class HookShellScriptPlugin {
   _onScriptComplete(key, error, msg) {
     this._procs[key] = null;
     if (msg === 'SIGTERM' || msg === 'SIGINT') {
-      this._log(`Killing script: ${key}\n`);
+      this._log(`Killing script: ${key}`);
     } else if (!error) {
-      this._log(`Completed script: ${key}\n`);
+      this._log(`Completed script: ${key}`);
     }
   }
 
