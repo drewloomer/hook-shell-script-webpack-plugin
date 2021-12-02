@@ -37,4 +37,4 @@ Big thanks to [webpack-hook-plugin](https://github.com/tienne/webpack-hook-plugi
 
 The MIT License
 
-Copyright :copyright: 2020 Drew Loomer, https://drewloomer.com
+Copyright :copyright: 2021 Drew Loomer, https://drewloomer.com
