@@ -4,7 +4,7 @@ const NAME = 'HookShellScriptPlugin';
 class HookShellScriptPlugin {
   /**
    * Add hooks and scripts to run on each hook.
-   * @param {{[hookName: string]: Array<string | {command: string, args: string[]}>}} hooks
+   * @param {{[hookName: string]: Array<string | {command: string, args: string[]} | (...params: any[]) => {command: string, args: string[]}>}} hooks
    */
   constructor(hooks = {}) {
     this._procs = {};
@@ -21,34 +21,44 @@ class HookShellScriptPlugin {
       if (!compiler.hooks[hookName]) {
         this._handleError(`The hook ${hookName} does not exist on the Webpack compiler.`);
       }
-      compiler.hooks[hookName].tap(NAME, () => {
-        this._hooks[hookName].forEach(s => this._handleScript(s));
+      compiler.hooks[hookName].tap(NAME, (...args) => {
+        this._hooks[hookName].forEach(s => this._handleScript(s, args));
       });
     });
   }
 
   /**
    * Parse a given script into a command and arguments
-   * @param {string | {command: string, args: string[]}} script
+   * @param {string | {command: string, args: string[]} | (...params: any[]) => {command: string, args: string[]}} script
+   * @param {any[]} params
+   * @returns {{command: string, args: string[]}}
    */
-  _parseScript(script) {
-    if (typeof script === 'string') {
-      const [command, ...args] = script.split(' ');
-      return { command, args };
+  _parseScript(script, params) {
+    switch (typeof script) {
+      case 'string': {
+        const [command, ...args] = script.split(' ');
+        return { command, args };
+      }
+      case 'function':
+        return this._parseScript(script(...params));
+      case 'object':
+        return script;
+      default:
+        return null;
     }
-    const { command, args } = script;
-    return { command, args };
   }
 
   /**
    * Run a script, cancelling an already running iteration of that script.
-   * @param {string | {command: string, args: string[]}} script
+   * @param {string | {command: string, args: string[]} | (...params: any[]) => {command: string, args: string[]} script
+   * @param {any[]} params
    */
-  _handleScript(script) {
-    const key = typeof script === 'string' ? script : JSON.stringify(script);
-    if (this._procs[key]) this._killProc(key);
+  _handleScript(script, params) {
+    const { command, args = [] } = this._parseScript(script, params);
+    if (!command) this._handleError(`Missing command for script ${script}`);
+    const key = `${command} ${args.join(' ')}`;
     this._log(`Running script: ${key}`);
-    const { command, args } = this._parseScript(script);
+    if (this._procs[key]) this._killProc(key);
     this._procs[key] = spawn(command, args, { stdio: 'pipe', shell: true });
     this._procs[key].on('error', this._onScriptError.bind(this, key));
     this._procs[key].stderr.on('data', this._onScriptError.bind(this, key));
