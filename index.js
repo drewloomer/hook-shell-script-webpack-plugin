@@ -1,10 +1,24 @@
+//@ts-check
+
 const { spawn } = require('child_process');
 const NAME = 'HookShellScriptPlugin';
+
+/**
+ * @typedef {import('webpack').Compiler} Compiler
+ * @typedef {string | {command: string, args: string[]}} CommandAndArgs
+ * @typedef {(...params: any[]) => CommandAndArgs} HookFunc
+ * @typedef {CommandAndArgs | HookFunc} HookValueType
+ */
+
+/**
+ * @typedef {Compiler["hooks"][T] extends import('tapable').Hook<infer A> ? A extends any[] ? A : any[] : any[]} Args<T>
+ * @template {keyof Compiler["hooks"]} T
+ */
 
 class HookShellScriptPlugin {
   /**
    * Add hooks and scripts to run on each hook.
-   * @param {{[hookName: string]: Array<string | {command: string, args: string[]} | (...params: any[]) => {command: string, args: string[]}>}} hooks
+   * @param {Partial<{[hookName in keyof Compiler["hooks"]]: (CommandAndArgs | ((...args: Args<hookName>) => CommandAndArgs))[]}>} hooks
    */
   constructor(hooks = {}) {
     this._procs = {};
@@ -13,6 +27,7 @@ class HookShellScriptPlugin {
 
   /**
    * Add callbacks for each hook. If a hook doesn't exist on the compiler, throw an error.
+   * @param {Compiler} compiler
    */
   apply(compiler) {
     this.watch = compiler.options.watch;
@@ -29,11 +44,11 @@ class HookShellScriptPlugin {
 
   /**
    * Parse a given script into a command and arguments
-   * @param {string | {command: string, args: string[]} | (...params: any[]) => {command: string, args: string[]}} script
-   * @param {any[]} params
-   * @returns {{command: string, args: string[]}}
+   * @param {HookValueType} script
+   * @param {...any[]} params
+   * @returns {{command: string | null, args: string[]}}
    */
-  _parseScript(script, params) {
+  _parseScript(script, ...params) {
     switch (typeof script) {
       case 'string': {
         const [command, ...args] = script.split(' ');
@@ -44,18 +59,21 @@ class HookShellScriptPlugin {
       case 'object':
         return script;
       default:
-        return null;
+        return { command: null, args: [] };
     }
   }
 
   /**
    * Run a script, cancelling an already running iteration of that script.
-   * @param {string | {command: string, args: string[]} | (...params: any[]) => {command: string, args: string[]} script
+   * @param {HookValueType} script
    * @param {any[]} params
    */
   _handleScript(script, params) {
-    const { command, args = [] } = this._parseScript(script, params);
-    if (!command) this._handleError(`Missing command for script ${script}`);
+    const { command, args = [] } = this._parseScript(script, ...params);
+    if (!command) {
+      this._handleError(`Missing command for script ${script}`);
+      return;
+    }
     const key = `${command} ${args.join(' ')}`;
     this._log(`Running script: ${key}`);
     if (this._procs[key]) this._killProc(key);
@@ -81,6 +99,7 @@ class HookShellScriptPlugin {
     if (!this.watch) {
       throw new Error(`[${NAME}] ${msg}`);
     }
+    // @ts-ignore
     this.logger.error(msg);
   }
 
@@ -89,6 +108,7 @@ class HookShellScriptPlugin {
    * @param {string} msg
    */
   _log(msg) {
+    // @ts-ignore
     this.logger.info(msg);
   }
 

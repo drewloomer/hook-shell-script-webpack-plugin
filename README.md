@@ -22,8 +22,23 @@ module.exports = {
   // ...
   plugins: [
     new HookShellScriptPlugin({
+      // run a single command
       afterEmit: ['npx tsc --emitDeclarationOnly']
-      // ...
+      // run multiple commands in parallel
+      done: [
+        // either as a string
+        'command1 with args',
+        // or as a command with args
+        {command: 'command2', args: ['with', 'args']}
+      ],
+      // run a command based on the hook arguments
+      assetEmitted: [
+        // you can return a string
+        (name, info) => `node ${info.outputPath}`
+        // or an object with command and args
+        (name, info) => ({command: 'node', args: [info.outputPath]})
+      ],
+      // return a command and argrs object
     })
   ]
 };
