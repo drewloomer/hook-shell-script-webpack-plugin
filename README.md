@@ -23,7 +23,7 @@ module.exports = {
   plugins: [
     new HookShellScriptPlugin({
       // run a single command
-      afterEmit: ['npx tsc --emitDeclarationOnly']
+      afterEmit: ['npx tsc --emitDeclarationOnly'],
       // run multiple commands in parallel
       done: [
         // either as a string
