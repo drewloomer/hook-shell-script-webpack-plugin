@@ -74,12 +74,14 @@ class HookShellScriptPlugin {
       this._handleError(`Missing command for script ${script}`);
       return;
     }
-    const key = `${command} ${args.join(' ')}`;
+    let key = command;
+    if (args.length > 0) {
+      key += ` ${args.join(' ')}`;
+    }
     this._log(`Running script: ${key}`);
     if (this._procs[key]) this._killProc(key);
-    this._procs[key] = spawn(command, args, { stdio: 'pipe', shell: true });
+    this._procs[key] = spawn(command, args, { stdio: 'inherit', shell: true });
     this._procs[key].on('error', this._onScriptError.bind(this, key));
-    this._procs[key].stderr.on('data', this._onScriptError.bind(this, key));
     this._procs[key].on('exit', this._onScriptComplete.bind(this, key));
   }
 
@@ -122,9 +124,10 @@ class HookShellScriptPlugin {
     this._procs[key] = null;
     if (msg === 'SIGTERM' || msg === 'SIGINT') {
       this._log(`Killing script: ${key}`);
-    } else if (!error) {
-      this._log(`Completed script: ${key}`);
+    } else if (error) {
+      this._onScriptError(key, error);
     }
+    this._log(`Completed script: ${key}`);
   }
 
   /**
