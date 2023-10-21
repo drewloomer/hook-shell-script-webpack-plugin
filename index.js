@@ -80,7 +80,7 @@ class HookShellScriptPlugin {
     }
     this._log(`Running script: ${key}`);
     if (this._procs[key]) this._killProc(key);
-    this._procs[key] = spawn(command, args, { stdio: 'inherit', shell: true });
+    this._procs[key] = spawn(command, args, { stdio: 'inherit' });
     this._procs[key].on('error', this._onScriptError.bind(this, key));
     this._procs[key].on('exit', this._onScriptComplete.bind(this, key));
   }
