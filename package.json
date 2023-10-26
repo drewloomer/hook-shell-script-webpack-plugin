@@ -1,6 +1,6 @@
 {
   "name": "hook-shell-script-webpack-plugin",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "A Webpack plugin for running shell scripts on any hook provided by Webpack.",
   "main": "index.js",
   "repository": {
